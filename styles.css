@@ -176,7 +176,18 @@ label.f > span { display: block; font-size: 13.5px; font-weight: 700; color: var
 .bmove { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1.5px dashed var(--line); }
 .bmove:last-child { border: 0; }
 .bnum { flex: none; width: 28px; height: 28px; border-radius: 9px; background: var(--soft); display: grid; place-items: center; font-weight: 900; color: var(--muted); }
+.poses { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.poses.n3 { grid-template-columns: 1fr 1fr 1fr; }
+.poses figure { margin: 0; background: var(--soft); border-radius: 14px; padding: 6px 6px 8px; position: relative; }
+.poses .pose { display: block; width: 100%; height: auto; }
+.poses figcaption { font-size: 11.5px; line-height: 1.25; color: var(--muted); font-weight: 600; text-align: center; margin-top: 2px; }
+.pnum { position: absolute; top: 5px; left: 7px; width: 18px; height: 18px; border-radius: 6px; background: var(--brick); color: #fff; font-size: 11px; font-weight: 900; display: grid; place-items: center; }
+.poses.big { margin: 6px 0 12px; }
+.poses.big figure { background: #fff; box-shadow: var(--shadow); }
+.poses.big figcaption { font-size: 13px; color: var(--ink); }
 .brun { text-align: center; padding-top: 8px; }
+.brun h1 { margin-top: 8px !important; }
+.brun .ring { width: 150px; height: 150px; margin: 4px auto 12px; }
 .brun h1 { font-size: 30px; font-weight: 900; margin: 18px 0 8px; }
 .how-big { font-size: 17px; font-weight: 600; max-width: 420px; margin: 0 auto 14px; }
 .ring { width: 190px; height: 190px; display: block; margin: 8px auto 16px; }

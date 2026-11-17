@@ -75,14 +75,14 @@ const ROTATION = ['push', 'pull', 'legs'];
 // ---------- evening back routine ----------
 // Gentle, pain-guided. Nothing that stretches the hamstrings or pulls on the sciatic nerve.
 const BACK = [
-  { name: 'Cat-cow', secs: 60, how: 'On hands and knees. Slowly round your back up, then let it sag a little. Small, smooth, no forcing.' },
-  { name: 'Hip flexor stretch — left', secs: 40, how: 'Half-kneel, left knee down. Tuck your pelvis under (squeeze the glute) and shift forward a little. Feel the front of the left hip.' },
-  { name: 'Hip flexor stretch — right', secs: 40, how: 'Same, right knee down. Tuck the pelvis first, then shift forward. Do not arch the lower back.' },
-  { name: 'Figure-4 glute stretch — left', secs: 40, how: 'On your back, left ankle over right knee. Gently pull the right thigh toward you.' },
-  { name: 'Figure-4 glute stretch — right', secs: 40, how: 'Swap sides: right ankle over left knee.' },
-  { name: 'Bird dog', secs: 60, how: 'On hands and knees. Reach opposite arm and leg out, hold 5 seconds, swap. Hips stay level, back stays flat.' },
-  { name: 'Dead bug', secs: 45, how: 'On your back, arms up, knees at 90°. Slowly lower opposite arm and leg. Lower back stays pressed into the floor.' },
-  { name: 'Knee hug', secs: 40, how: 'On your back, hug one knee gently to your chest for a few breaths, then the other. Relax.' },
+  { name: 'Cat-cow', art: 'catcow', secs: 60, how: 'On hands and knees. Slowly round your back up, then let it sag a little. Small, smooth, no forcing.' },
+  { name: 'Hip flexor stretch — left', art: 'hipflexor', secs: 40, how: 'Half-kneel, left knee down. Tuck your pelvis under (squeeze the glute) and shift forward a little. Feel the front of the left hip.' },
+  { name: 'Hip flexor stretch — right', art: 'hipflexor', flip: true, secs: 40, how: 'Same, right knee down. Tuck the pelvis first, then shift forward. Do not arch the lower back.' },
+  { name: 'Figure-4 glute stretch — left', art: 'figure4', secs: 40, how: 'On your back, left ankle over right knee. Gently pull the right thigh toward you.' },
+  { name: 'Figure-4 glute stretch — right', art: 'figure4', flip: true, secs: 40, how: 'Swap sides: right ankle over left knee.' },
+  { name: 'Bird dog', art: 'birddog', secs: 60, how: 'On hands and knees. Reach opposite arm and leg out, hold 5 seconds, swap. Hips stay level, back stays flat.' },
+  { name: 'Dead bug', art: 'deadbug', secs: 45, how: 'On your back, arms up, knees at 90°. Slowly lower opposite arm and leg. Lower back stays pressed into the floor.' },
+  { name: 'Knee hug', art: 'kneehug', secs: 40, how: 'On your back, hug one knee gently to your chest for a few breaths, then the other. Relax.' },
 ];
 
 // ---------- lines (original, Hormozi-flavoured) ----------

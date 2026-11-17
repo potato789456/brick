@@ -302,7 +302,7 @@ function vBack() {
     <p class="muted">${Math.round(total / 60)} minutes, in the evening before sleep. Slow and gentle. ${esc(pick(QUOTES.back))}</p>
     <div class="card warn-card small"><b>Stop rule:</b> if pain or tingling travels <b>down your leg</b>, stop that move. Pain that moves back toward the spine is usually fine. No hamstring stretching or toe touches. This is not medical advice; when you get the MRI result, ask what to add or remove.</div>
     <div class="card"><div class="row between"><b>Last 14 nights</b><span class="muted small">${S.back.includes(todayStr()) ? 'done tonight ✓' : ''}</span></div><div class="nights">${last14}</div></div>
-    <div class="card">${BACK.map((b, i) => `<div class="bmove"><div class="bnum">${i + 1}</div><div class="grow"><b>${esc(b.name)}</b> <span class="muted small">${b.secs} s</span><div class="small muted">${esc(b.how)}</div></div></div>`).join('')}</div>
+    <div class="card">${BACK.map((b, i) => `<div class="bmove"><div class="bnum">${i + 1}</div><div class="grow"><b>${esc(b.name)}</b> <span class="muted small">${b.secs} s</span><div class="small muted">${esc(b.how)}</div>${posesHTML(b)}</div></div>`).join('')}</div>
     <button class="btn big" data-a="backStart">Start routine</button>
     ${S.back.includes(todayStr()) ? '' : '<button class="link center-block muted" data-a="backMark">Did it without the timer? Mark tonight as done</button>'}`;
 }
@@ -312,6 +312,7 @@ function vBackRun() {
   return `<div class="brun">
     <div class="row between"><span class="muted small">${r.i + 1} / ${BACK.length}</span><button class="icon" data-a="backStop" aria-label="stop">✕</button></div>
     <h1>${esc(b.name)}</h1>
+    ${posesHTML(b, true)}
     <p class="how-big">${esc(b.how)}</p>
     <svg class="ring" viewBox="0 0 160 160"><circle cx="80" cy="80" r="70" fill="none" stroke="#efdfcf" stroke-width="10"/>
       <circle id="ring" cx="80" cy="80" r="70" fill="none" stroke="#d9583b" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}" transform="rotate(-90 80 80)"/>
