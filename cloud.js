@@ -1,8 +1,8 @@
 'use strict';
 /* Automatic cloud backup, same approach as Spuddy: Firebase with plain web requests,
    an anonymous sign-in per phone, and one backup document named by a 16-character recovery code.
-   Uses Spuddy's Firebase project (public web config, not a secret) and its own collection "brick_backups". */
-const FB = { key: 'AIzaSyD6yh9yVqPmJwmvjNqoFScYtJFB5hZY84c', project: 'spuddy-9f790' };
+   Uses Brick's own Firebase project (public web config, not a secret), collection "brick_backups". */
+const FB = { key: 'AIzaSyCeoEFXIx4yUDKibva301xw75t3W2vV58k', project: 'brick-620c8' };
 const FS_URL = `https://firestore.googleapis.com/v1/projects/${FB.project}/databases/(default)/documents`;
 const BK_COLL = 'brick_backups';
 let idTok = null, idExp = 0, cloudT = null, cloudBusy = false, lastCloud = null;

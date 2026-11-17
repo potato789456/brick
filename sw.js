@@ -1,5 +1,5 @@
 /* Offline cache. EVERY publish: raise the cache name by one and list any new file in SHELL. */
-const CACHE = 'brick-v1';
+const CACHE = 'brick-v2';
 const SHELL = ['./', 'index.html', 'styles.css', 'data.js', 'logic.js', 'brick.js', 'cloud.js', 'app.js', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {

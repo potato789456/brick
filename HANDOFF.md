@@ -11,12 +11,12 @@ Plain HTML/CSS/JS, no build step, no frameworks. Scripts load in this order:
 - `data.js`: equipment, plates, exercises (`EX`, keyed by permanent ids: never rename a key), days (`DAYS`), rotation, evening back routine, quotes.
 - `logic.js`: loads you can actually build (`loadsFor`), progression (`suggest`), last performance lookup.
 - `brick.js`: the mascot and the wall, as inline SVG.
-- `cloud.js`: automatic cloud backup with a 16-character recovery code (Firebase, plain web requests, anonymous sign-in). Uses Spuddy's Firebase project `spuddy-9f790`, collection `brick_backups`.
+- `cloud.js`: automatic cloud backup with a 16-character recovery code (Firebase, plain web requests, anonymous sign-in). Uses Brick's own Firebase project `brick-620c8` (anonymous sign-in on, Firestore in production mode), collection `brick_backups`. If a change needs a new collection or rule, give the owner the exact rule text to paste into Firestore > Rules, and wait until they say it is published.
 - `app.js`: state, views (Home / Wall / Back / Me, plus workout, done, back-routine player), actions.
 
 All data is in localStorage under `brick.v1` (object `S`). `normalize()` fills in missing fields. Never rename the key or break the shape of existing data.
 
-`sw.js` is the offline cache. EVERY publish: raise the cache name by one (now `brick-v1`) and add any new file to SHELL.
+`sw.js` is the offline cache. EVERY publish: raise the cache name by one (now `brick-v2`) and add any new file to SHELL.
 
 ## Rules the owner chose (keep them)
 - Rotation, not calendar weeks: Push → Pull → Legs. Upper is a bonus day that does not move the rotation. No guilt for missed days.
