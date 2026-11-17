@@ -138,13 +138,13 @@ function startWorkout(day) {
 }
 function newExEntry(k) {
   const sg = suggest(k);
-  return { k, sets: sg.sets.map(x => ({ kg: x.kg, reps: '', t: x.reps, done: false })), effort: null, pain: false, skip: false };
+  return { k, sets: sg.sets.map(x => ({ kg: x.kg, reps: '', t: x.reps, tk: x.kg, done: false })), skip: false };
 }
 function exCard(e, i) {
   const ex = EX[e.k], L = lastPerf(e.k), sg = suggest(e.k, e.sets.length);
   const allDone = e.sets.length && e.sets.every(x => x.done);
   const bw = ex.eq === 'bw';
-  const lastTxt = L ? `<div class="last"><span class="lbl">Last · ${fmtDate(L.date)}</span> ${L.sets.map(x => bw ? `${x.reps}` : `${kgTxt(x.kg)}×${x.reps}`).join(' · ')}${bw ? ' reps' : ''} <span class="eff ${L.effort}">${{ easy: 'easy', solid: 'solid', hard: 'grind' }[L.effort] || ''}</span>${L.pain ? ' <span class="eff hard">pain</span>' : ''}</div>`
+  const lastTxt = L ? `<div class="last"><span class="lbl">Last · ${fmtDate(L.date)}</span> ${L.sets.map(x => bw ? `${x.reps}` : `${kgTxt(x.kg)}×${x.reps}`).join(' · ')}${bw ? ' reps' : ''} <span class="muted small">· ${agoText(L.date)}</span></div>`
     : `<div class="last"><span class="lbl">Last</span> nothing yet</div>`;
   const tgt = sg.sets;
   const tgtTxt = bw ? `${tgt.map(x => x.reps).join(' · ')} reps` : `${tgt[0].kg === '' ? 'your pick' : kgTxt(tgt[0].kg) + ' kg'} × ${tgt.map(x => x.reps).join(' · ')}`;
@@ -161,12 +161,8 @@ function exCard(e, i) {
       <input class="inp reps" inputmode="numeric" data-in="reps" data-i="${i}" data-j="${j}" value="${esc(x.reps)}" placeholder="${x.t || ''}">
       <button class="tick" data-a="tick" data-i="${i}" data-j="${j}" aria-label="log set">${x.done ? '✓' : ''}</button>
     </div>`).join('');
-  const fb = allDone ? `<div class="fb">
-      <div class="small muted">How was it?</div>
-      <div class="row gap">${[['easy', 'Easy'], ['solid', 'Solid'], ['hard', 'Grinder']].map(([v, l]) => `<button class="chip ${e.effort === v ? 'sel' : ''}" data-a="effort" data-i="${i}" data-v="${v}">${l}</button>`).join('')}
-      <button class="chip warn ${e.pain ? 'sel' : ''}" data-a="pain" data-i="${i}">⚡ Pain</button></div>
-      ${e.pain ? '<div class="small warn-t">Noted. Next time it suggests one step lighter. If pain went down your leg, swap this exercise.</div>' : ''}
-    </div>` : '';
+  const st = stallInfo(e.k);
+  const stall = st ? `<div class="stall small"><b>🧱 Stuck for 3 sessions.</b> Normal on a cut. If you want to shake it up, pick one: <ul>${st.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
   return `<section class="card ex ${allDone ? 'complete' : ''} ${e.skip ? 'skipped' : ''}" id="ex-${i}">
     <div class="ex-head">
       <div><div class="ex-name">${esc(ex.name)}</div>
@@ -176,10 +172,10 @@ function exCard(e, i) {
     ${e.skip ? `<div class="muted small">Skipped today. <button class="link" data-a="unskip" data-i="${i}">Undo</button></div>` : `
     ${lastTxt}
     <div class="target kind-${sg.kind}"><div><span class="lbl">Today</span> <b>${tgtTxt}</b></div><div class="small">${esc(sg.note)}</div></div>
+    ${stall}
     ${ex.tip ? `<div class="tip small">💡 ${esc(ex.tip)}</div>` : ''}
     <div class="sets">${rows}</div>
-    <div class="row gap"><button class="link" data-a="addSet" data-i="${i}">+ Add set</button>${e.sets.length > 1 ? `<button class="link muted" data-a="delSet" data-i="${i}">− Remove set</button>` : ''}</div>
-    ${fb}`}
+    <div class="row gap"><button class="link" data-a="addSet" data-i="${i}">+ Add set</button>${e.sets.length > 1 ? `<button class="link muted" data-a="delSet" data-i="${i}">− Remove set</button>` : ''}${L ? `<button class="link muted push-r" data-a="hist" data-k="${e.k}">📈 Progress</button>` : ''}</div>`}
   </section>`;
 }
 function vWorkout() {
@@ -198,7 +194,7 @@ function vWorkout() {
 
 function finishWorkout() {
   const c = S.cur;
-  const ex = c.ex.filter(e => !e.skip && doneSets(e).length).map(e => ({ k: e.k, sets: doneSets(e).map(x => ({ kg: EX[e.k].eq === 'bw' ? 0 : +x.kg || 0, reps: +x.reps || 0, done: true })), effort: e.effort || 'solid', pain: !!e.pain }));
+  const ex = c.ex.filter(e => !e.skip && doneSets(e).length).map(e => ({ k: e.k, sets: doneSets(e).map(x => ({ kg: EX[e.k].eq === 'bw' ? 0 : +x.kg || 0, reps: +x.reps || 0, t: +x.t || null, tk: x.tk === '' || x.tk == null ? null : +x.tk, done: true })) }));
   // personal bests, measured against everything before this session
   const prs = [];
   ex.forEach(e => {
@@ -282,7 +278,7 @@ function sheetSession(id) {
   const s = S.log.find(x => x.id === id); if (!s) return;
   openSheet(`<div class="sh-head"><b>${DAYS[s.day].name} · ${new Date(s.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</b><button class="icon" data-a="closeSheet">✕</button></div>
     <p class="muted small">Brick #${S.log.indexOf(s) + 1} · ${fmtDur(s.dur)}</p>
-    ${s.ex.map(e => `<div class="hrow"><b>${esc(EX[e.k].name)}</b><div class="muted small">${e.sets.map(x => EX[e.k].eq === 'bw' ? x.reps : `${x.kg}×${x.reps}`).join(' · ')} · ${{ easy: 'easy', solid: 'solid', hard: 'grind' }[e.effort] || ''}${e.pain ? ' · pain' : ''}</div></div>`).join('')}
+    ${s.ex.map(e => `<div class="hrow"><b>${esc(EX[e.k].name)}</b><div class="muted small">${e.sets.map(x => EX[e.k].eq === 'bw' ? x.reps : `${x.kg}×${x.reps}`).join(' · ')}</div></div>`).join('')}
     <button class="link muted center-block" data-a="delSession" data-id="${s.id}">Delete this workout</button>`);
 }
 function sheetHistory(k) {
@@ -291,8 +287,36 @@ function sheetHistory(k) {
     const e = S.log[i].ex.find(e => e.k === k);
     if (e && e.sets.length) rows.push(`<div class="hrow"><b>${fmtDate(S.log[i].date)}</b> <span class="muted small">${agoText(S.log[i].date)}</span><div class="small">${e.sets.map(x => EX[k].eq === 'bw' ? x.reps : `${x.kg}×${x.reps}`).join(' · ')}</div></div>`);
   }
-  openSheet(`<div class="sh-head"><b>${esc(EX[k].name)}</b><button class="icon" data-a="closeSheet">✕</button></div>${rows.join('') || '<p class="muted">No history yet.</p>'}`);
+  openSheet(`<div class="sh-head"><b>${esc(EX[k].name)}</b><button class="icon" data-a="closeSheet">✕</button></div>${progressChart(k)}<h3 class="sub">Recent sessions</h3>${rows.join('') || '<p class="muted">No history yet.</p>'}`);
 }
+const setTxt = (k, x) => isBw(k) ? `${x.reps} reps` : `${+x.kg} kg × ${x.reps}`;
+/* One line: estimated 1-rep max per session (bodyweight: most reps in a set). Tap a point for that session. */
+function progressChart(k) {
+  const h = perfHistory(k).slice(-30), bw = isBw(k);
+  const label = bw ? 'Best set (reps)' : 'Estimated max (kg)';
+  if (h.length < 2) return `<div class="chart-card"><div class="chart-t">${label}</div><p class="muted small">The chart appears after your second session of this exercise.</p></div>`;
+  const W = 340, H = 170, L = 34, R = 14, T = 22, B = 24;
+  const t0 = new Date(h[0].date).getTime(), t1 = new Date(h[h.length - 1].date).getTime();
+  const vals = h.map(p => p.score), lo0 = Math.min(...vals), hi0 = Math.max(...vals), pad = Math.max(1, (hi0 - lo0) * 0.15);
+  const lo = Math.max(0, Math.floor(lo0 - pad)), hi = Math.ceil(hi0 + pad);
+  const x = p => L + (t1 === t0 ? (W - L - R) / 2 : (new Date(p.date).getTime() - t0) / (t1 - t0) * (W - L - R));
+  const y = v => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+  const fmtV = v => bw ? String(Math.round(v)) : String(Math.round(v));
+  const ticks = [lo, (lo + hi) / 2, hi].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#efe2d4" stroke-width="1"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" class="ct">${fmtV(v)}</text>`).join('');
+  const bestI = vals.indexOf(hi0), lastI = h.length - 1;
+  const path = h.map((p, i) => `${i ? 'L' : 'M'}${x(p).toFixed(1)} ${y(p.score).toFixed(1)}`).join(' ');
+  const dots = h.map((p, i) => `<circle cx="${x(p)}" cy="${y(p.score)}" r="${i === bestI ? 5.5 : 4}" fill="${i === bestI ? '#e8a33d' : '#d9583b'}" stroke="#fff" stroke-width="2"/>`).join('');
+  const hits = h.map((p, i) => `<circle cx="${x(p)}" cy="${y(p.score)}" r="16" fill="transparent" data-a="chartPt" data-k="${k}" data-i="${i}"/>`).join('');
+  const lab = (i, txt) => { const p = h[i], px = x(p), anchor = px > W - 70 ? 'end' : px < L + 40 ? 'start' : 'middle'; return `<text x="${px}" y="${y(p.score) - 10}" text-anchor="${anchor}" class="cl">${txt}</text>`; };
+  const labels = lab(bestI, 'best ' + fmtV(hi0)) + (lastI !== bestI ? lab(lastI, 'now ' + fmtV(vals[lastI])) : '');
+  const dates = `<text x="${L}" y="${H - 6}" class="ct">${fmtDate(h[0].date)}</text><text x="${W - R}" y="${H - 6}" text-anchor="end" class="ct">${fmtDate(h[lastI].date)}</text>`;
+  const first = vals[0], change = vals[lastI] - first;
+  return `<div class="chart-card"><div class="row between"><div class="chart-t">${label}</div><div class="small ${change >= 0 ? 'up-t' : 'muted'}">${change >= 0 ? '+' : ''}${Math.round(change)}${bw ? '' : ' kg'} since ${fmtDate(h[0].date)}</div></div>
+    <svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label} over time">${ticks}<path d="${path}" fill="none" stroke="#d9583b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}${labels}${dates}${hits}</svg>
+    <div class="chart-tip small" id="chart-tip">${ptTxt(k, h[lastI])}</div>
+    ${bw ? '' : '<p class="muted small">Estimated max = what your best set suggests you could lift once. It rises with more weight or more reps.</p>'}</div>`;
+}
+const ptTxt = (k, p) => `<b>${fmtDate(p.date)}</b> · best set ${setTxt(k, p.best)}${isBw(k) ? '' : ` · est. max ${Math.round(p.score)} kg`} · ${p.sets.length} sets`;
 
 /* ---------- back routine ---------- */
 function vBack() {
@@ -395,10 +419,8 @@ const A = {
     if (Math.random() < 0.35) toast(pick(QUOTES.set));
     rerenderEx(i, true);
   },
-  addSet: el => { const e = S.cur.ex[+el.dataset.i], l = e.sets[e.sets.length - 1] || { kg: '', t: EX[e.k].min }; e.sets.push({ kg: l.kg, reps: '', t: l.t, done: false }); save(); rerenderEx(+el.dataset.i); },
+  addSet: el => { const e = S.cur.ex[+el.dataset.i], l = e.sets[e.sets.length - 1] || { kg: '', t: EX[e.k].min }; e.sets.push({ kg: l.kg, reps: '', t: l.t, tk: l.kg, done: false }); save(); rerenderEx(+el.dataset.i); },
   delSet: el => { const e = S.cur.ex[+el.dataset.i]; if (e.sets.length > 1) e.sets.pop(); save(); rerenderEx(+el.dataset.i); },
-  effort: el => { const e = S.cur.ex[+el.dataset.i]; e.effort = el.dataset.v; save(); rerenderEx(+el.dataset.i); },
-  pain: el => { const e = S.cur.ex[+el.dataset.i]; e.pain = !e.pain; save(); rerenderEx(+el.dataset.i); },
   unskip: el => { S.cur.ex[+el.dataset.i].skip = false; save(); render(); },
   exMenu: el => {
     const i = +el.dataset.i, e = S.cur.ex[i], X = EX[e.k];
@@ -411,6 +433,7 @@ const A = {
         <button class="chip" data-a="swap" data-i="${i}" data-k="${k}">Today</button><button class="chip" data-a="swap" data-i="${i}" data-k="${k}" data-keep="1">For good</button></div>`).join('')}` : ''}`);
   },
   hist: el => sheetHistory(el.dataset.k),
+  chartPt: el => { const k = el.dataset.k, p = perfHistory(k).slice(-30)[+el.dataset.i], t = $('#chart-tip'); if (p && t) t.innerHTML = ptTxt(k, p); },
   skip: el => { const e = S.cur.ex[+el.dataset.i]; e.skip = true; closeSheet(); save(); render(); },
   swap: el => {
     const i = +el.dataset.i, k = el.dataset.k, old = S.cur.ex[i].k;
@@ -466,8 +489,8 @@ function rerenderEx(i, scrollNext) {
   if (scrollNext) {
     const e = S.cur.ex[i];
     if (e.sets.every(x => x.done)) {
-      const fbEl = document.querySelector(`#ex-${i} .fb`);
-      if (fbEl) fbEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const next = document.getElementById('ex-' + (i + 1));
+      if (next) setTimeout(() => window.scrollTo({ top: next.offsetTop - 70, behavior: 'smooth' }), 350);
     }
   }
 }

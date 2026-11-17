@@ -131,6 +131,16 @@ label.f > span { display: block; font-size: 13.5px; font-weight: 700; color: var
 .set.done .inp { background: #f2faf5; border-color: #cfead9; }
 .fb { margin-top: 10px; padding-top: 10px; border-top: 1.5px dashed var(--line); }
 .fb .row { margin-top: 6px; }
+.stall { margin-top: 8px; background: #f3eefb; color: #4a3a6e; border-radius: 14px; padding: 10px 12px; }
+.stall ul { margin: 4px 0 0; padding-left: 18px; }
+.push-r { margin-left: auto; }
+.chart-card { background: #fff; border-radius: 18px; padding: 12px 12px 10px; box-shadow: var(--shadow); margin: 8px 0 4px; }
+.chart-t { font-weight: 800; font-size: 14.5px; }
+.chart { display: block; width: 100%; height: auto; margin-top: 4px; }
+.chart .ct { font-size: 10.5px; fill: var(--muted); font-weight: 600; }
+.chart .cl { font-size: 11px; fill: var(--ink); font-weight: 800; }
+.chart-tip { background: var(--soft); border-radius: 10px; padding: 7px 10px; margin-top: 4px; }
+.up-t { color: var(--green); font-weight: 800; }
 .swap { display: flex; align-items: center; gap: 6px; padding: 9px 0; border-bottom: 1.5px dashed var(--line); }
 .swap .chip { font-size: 12.5px; padding: 6px 9px; }
 

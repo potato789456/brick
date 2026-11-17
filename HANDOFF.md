@@ -22,6 +22,6 @@ All data is in localStorage under `brick.v1` (object `S`). `normalize()` fills i
 - Rotation, not calendar weeks: Push → Pull → Legs. Upper is a bonus day that does not move the rotation. No guilt for missed days.
 - Each exercise shows what was done last time (however long ago) and a suggestion for today.
 - Only suggest weights that can be built: machine (all cable/stack exercises) 20–50 kg in 5 kg steps; barbell 10 kg, EZ bar 8 kg (any plates); dumbbell handles 2 kg, both ends equal and both dumbbells equal; 5/15/20 kg plates only on bars. Plates: 2×20, 2×15, 2×5, 4×3, 8×2.5, 8×2, 8×1. Dumbbell weights are per dumbbell.
-- Owner is cutting: matching last time counts as a win.
+- Owner is cutting: matching last time counts as a win. Progression uses only logged reps (no effort or pain buttons, owner chose that). Missed target → same target again. Stall note after 3 sessions without improvement. No warm-up sets, weekly-sets or body-weight features (owner declined).
 - Lower back: chronic low back pain with L4/L5 nerve-root irritation, positive straight-leg raise. No hamstring stretching, no squat/RDL in the default plan. MRI pending; the evening back routine should be revisited after it. Not medical advice.
 - Original Hormozi-style lines spread across the app (not verbatim quotes).

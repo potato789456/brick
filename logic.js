@@ -86,76 +86,89 @@ function lighter(eq, kg) {
 const e1rm = (kg, reps) => kg * (1 + reps / 30);
 const repsAt = (e1, kg) => Math.floor(30 * (e1 / kg - 1));
 
-// The most recent completed performance of an exercise (any day, any time ago).
-function lastPerf(key, before) {
-  for (let i = S.log.length - 1; i >= 0; i--) {
-    const s = S.log[i];
-    if (before && s.id === before) continue;
-    const e = s.ex.find(e => e.k === key);
-    if (!e) continue;
-    const sets = e.sets.filter(x => x.done && +x.reps > 0);
-    if (sets.length) return { date: s.date, sets, effort: e.effort || 'solid', pain: !!e.pain };
-  }
-  return null;
-}
-function bestE1(key) {
-  let b = 0;
-  S.log.forEach(s => s.ex.forEach(e => { if (e.k === key) e.sets.forEach(x => { if (x.done && +x.kg > 0 && +x.reps > 0) b = Math.max(b, e1rm(+x.kg, +x.reps)); }); }));
-  return b;
-}
-function bestReps(key) {
-  let b = 0;
-  S.log.forEach(s => s.ex.forEach(e => { if (e.k === key) e.sets.forEach(x => { if (x.done) b = Math.max(b, +x.reps || 0); }); }));
-  return b;
-}
-const daysAgo = iso => Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
 
-/* The suggestion for today.
-   Double progression on the loads you can build: add reps inside the range, then add weight.
+const daysAgo = iso => Math.floor((Date.now() - new Date(iso).getTime()) / 864e5);
+const isBw = key => EX[key].eq === 'bw';
+
+// Every finished performance of an exercise, oldest first, with a single "score" to compare sessions:
+// estimated 1-rep max of the best set (bodyweight: most reps in one set), plus total reps.
+function perfHistory(key) {
+  const out = [];
+  S.log.forEach(s => {
+    const e = s.ex.find(e => e.k === key);
+    if (!e) return;
+    const sets = e.sets.filter(x => x.done && +x.reps > 0);
+    if (!sets.length) return;
+    let best = sets[0], score = 0;
+    sets.forEach(x => { const v = isBw(key) ? +x.reps : e1rm(+x.kg || 0, +x.reps); if (v > score) { score = v; best = x; } });
+    out.push({ id: s.id, date: s.date, sets, best, score, top: Math.max(...sets.map(x => +x.kg || 0)), reps: sets.reduce((a, x) => a + +x.reps, 0) });
+  });
+  return out;
+}
+const lastPerf = key => { const h = perfHistory(key); return h.length ? h[h.length - 1] : null; };
+const bestE1 = key => Math.max(0, ...perfHistory(key).filter(p => !isBw(key)).map(p => p.score));
+const bestReps = key => Math.max(0, ...perfHistory(key).filter(p => isBw(key)).map(p => p.score));
+
+// Did this session beat that one? Higher estimated max, or more total reps at the same top weight.
+const improved = (a, b) => a.score > b.score * 1.001 || (a.top === b.top && a.reps > b.reps);
+
+/* Stall: none of the last 3 sessions beat the session before them. Returns fix ideas, never changes anything. */
+function stallInfo(key) {
+  const h = perfHistory(key);
+  if (h.length < 4) return null;
+  const base = h[h.length - 4], recent = h.slice(-3);
+  if (recent.some(p => improved(p, base))) return null;
+  const ex = EX[key], tips = [];
+  if (!isBw(key) && hasLoads(ex.eq) || ex.eq === 'free') tips.push(`drop to ${lighter(ex.eq, base.top)} kg and build back up over a few sessions`);
+  tips.push(`add one set (${ex.sets + 1} instead of ${ex.sets})`);
+  if (ex.alts.length) tips.push(`swap to ${EX[ex.alts[0]].name} for a few weeks (⋯ menu)`);
+  return { tips };
+}
+
+/* The suggestion for today, based only on what you logged.
+   Hit the target last time → move on: add reps inside the range, then add weight (only loads you can build).
    When the next weight jump is big (like +5 kg on the machine), bank extra reps above the range first,
-   then jump and land on the reps your estimated 1-rep max predicts. On a cut, matching last time is a win. */
+   then jump and land on the reps your estimated 1-rep max predicts.
+   Missed the target → same target again, no penalty. Long break → about 10% lighter. */
 function suggest(key, nSets) {
   const ex = EX[key], n = nSets || ex.sets, L = lastPerf(key);
   const fill = (kg, reps) => Array.from({ length: n }, (_, i) => ({ kg, reps: Array.isArray(reps) ? reps[Math.min(i, reps.length - 1)] : reps }));
 
   if (!L) return {
-    sets: fill(ex.eq === 'bw' ? 0 : '', ex.min), kind: 'new',
-    note: ex.eq === 'bw' ? `First time logged. Aim for ${ex.min}–${ex.max} clean reps.` : `First time logged. Pick a weight you could do ~${ex.max} reps with, and stop 1–2 reps short. Brick learns from there.`,
+    sets: fill(isBw(key) ? 0 : '', ex.min), kind: 'new',
+    note: isBw(key) ? `First time logged. Aim for ${ex.min}–${ex.max} clean reps.` : `First time logged. Pick a weight you could do ~${ex.max} reps with, and stop 1–2 reps short. Brick learns from there.`,
   };
 
-  const lastReps = i => +((L.sets[i] || L.sets[L.sets.length - 1]).reps);
-  const inc = L.effort === 'easy' ? 2 : L.effort === 'hard' ? 0 : 1;
+  const lastSet = i => L.sets[i] || L.sets[L.sets.length - 1];
+  const lastReps = i => +lastSet(i).reps;
   const gap = daysAgo(L.date);
+  // missed = a set done at (or above) the suggested weight but short of the suggested reps
+  const missed = L.sets.some(x => x.t && +x.reps < +x.t && (x.tk == null || x.tk === '' || +x.kg >= +x.tk));
+  const holdReps = Array.from({ length: n }, (_, i) => { const x = lastSet(i); return Math.max(+x.reps, +x.t || 0); });
 
-  if (ex.eq === 'bw') {
-    const reps = Array.from({ length: n }, (_, i) => L.pain ? Math.min(lastReps(i), ex.min) : lastReps(i) + (gap >= 21 ? 0 : inc));
-    return { sets: fill(0, reps), kind: L.pain ? 'pain' : 'reps', note: L.pain ? 'Pain flagged last time. Fewer, smooth reps.' : inc ? 'Beat each set by a rep.' : 'Last time was a grind. Match it.' };
+  if (isBw(key)) {
+    if (missed) return { sets: fill(0, holdReps), kind: 'hold', note: 'Missed a few reps last time. Same target again, no rush.' };
+    return { sets: fill(0, Array.from({ length: n }, (_, i) => lastReps(i) + (gap >= 21 ? 0 : 1))), kind: 'reps', note: gap >= 21 ? `Last done ${gap} days ago. Match last time.` : 'Beat each set by a rep.' };
   }
 
-  const W = Math.max(...L.sets.map(x => +x.kg || 0));
+  const W = L.top;
   const atW = L.sets.filter(x => +x.kg === W);
   const e1 = Math.max(...L.sets.map(x => e1rm(+x.kg || 0, +x.reps)));
 
-  if (L.pain) {
-    const kg = lighter(ex.eq, W);
-    return { sets: fill(kg, ex.min), kind: 'pain', note: 'Pain flagged last time: about 10% lighter, smooth reps. If it travels down your leg, swap or skip it.' };
-  }
   if (gap >= 21) {
     const kg = lighter(ex.eq, W);
     const pr = kg > 0 ? Math.min(ex.max, Math.max(ex.min, repsAt(e1, kg) - 2)) : ex.min;
     return { sets: fill(kg, pr), kind: 'back', note: `Last done ${gap} days ago. About 10% lighter to find your groove. Next time it moves again.` };
   }
+  if (missed) return { sets: fill(W, holdReps), kind: 'hold', note: 'Missed a few reps last time. Same target again, no rush.' };
 
   const up = upLoad(ex.eq, W);
   const jump = up ? (up - W) / Math.max(W, 1) : 0;
   const thr = ex.max + (jump > 0.15 ? 2 : jump > 0.08 ? 1 : 0);
   const minAtW = Math.min(...atW.map(x => +x.reps));
 
-  if (L.effort === 'hard') {
-    return { sets: fill(W, Array.from({ length: n }, (_, i) => lastReps(i))), kind: 'hold', note: 'Last time was a grind. Match it today. On a cut, matching is a win.' };
-  }
   if (up == null) {
-    return { sets: fill(W, Array.from({ length: n }, (_, i) => lastReps(i) + inc)), kind: 'reps', note: 'Heaviest you can load here. Add reps, or slow the lowering to 3 seconds.' };
+    return { sets: fill(W, Array.from({ length: n }, (_, i) => lastReps(i) + 1)), kind: 'reps', note: 'Heaviest you can load here. Add reps, or slow the lowering to 3 seconds.' };
   }
   if (minAtW >= thr) {
     const pred = repsAt(e1, up);
@@ -163,8 +176,8 @@ function suggest(key, nSets) {
       const reps = Math.max(ex.min, Math.min(ex.max, pred));
       return { sets: fill(up, reps), kind: 'up', note: `Weight up: ${W} → ${up} kg. Aim for ${reps} reps.` };
     }
-    return { sets: fill(W, Array.from({ length: n }, (_, i) => Math.min(lastReps(i) + Math.max(inc, 1), thr + 4))), kind: 'bank', note: `Next jump (+${r2(up - W)} kg) is big. Bank a few extra reps first.` };
+    return { sets: fill(W, Array.from({ length: n }, (_, i) => Math.min(lastReps(i) + 1, thr + 4))), kind: 'bank', note: `Next jump (+${r2(up - W)} kg) is big. Bank a few extra reps first.` };
   }
-  const reps = Array.from({ length: n }, (_, i) => Math.min(lastReps(i) + inc, thr));
+  const reps = Array.from({ length: n }, (_, i) => Math.min(lastReps(i) + 1, thr));
   return { sets: fill(W, reps), kind: 'reps', note: thr > ex.max ? `Same weight. Push to ${thr} reps on every set, then the weight goes up.` : `Same weight. Beat each set by a rep. At ${ex.max} reps on all sets, the weight goes up.` };
 }
