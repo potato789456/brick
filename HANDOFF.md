@@ -25,3 +25,8 @@ All data is in localStorage under `brick.v1` (object `S`). `normalize()` fills i
 - Owner is cutting: matching last time counts as a win. Progression uses only logged reps (no effort or pain buttons, owner chose that). Missed target → same target again. Stall note after 3 sessions without improvement. No warm-up sets, weekly-sets or body-weight features (owner declined).
 - Lower back: chronic low back pain with L4/L5 nerve-root irritation, positive straight-leg raise. No hamstring stretching, no squat/RDL in the default plan. MRI pending; the evening back routine should be revisited after it. Not medical advice.
 - Original Hormozi-style lines spread across the app (not verbatim quotes).
+
+## People (added 2026-11-18)
+- Several people can share one phone. `brick.profiles` = { active, list:[{id,name}] }. The first person (`p1`) keeps the original key `brick.v1`; others use `brick.v1.<id>`. Switch in Me or the 👤 chip on Home.
+- Each person's S has `prof = { kind, back }`. `kind` picks the program in `PROGRAMS` (data.js): `tough` = Push/Pull/Legs + Upper bonus, goal 3, Hormozi-style lines; `happy` = his girlfriend's 2-day glute program (Glutes & Push / Glutes & Pull), goal 2, cheerful lines (`QUOTES_HAPPY`), smiling mascot, pink accents (`body[data-tone=happy]`). `back` shows or hides the evening back routine.
+- Her constraints: knee problem (no squats, no lunges, leg extension only if the knee is fine), glute focus, prefers bench over overhead press, likes EZ curls, close-grip bench, bent-over row or wide / V-bar pulldowns, RDL, side-lying leg raises.

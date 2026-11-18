@@ -223,3 +223,14 @@ label.f > span { display: block; font-size: 13.5px; font-weight: 700; color: var
 #tabs button span { font-size: 22px; filter: grayscale(1); opacity: .6; }
 #tabs button.on { color: var(--brick); }
 #tabs button.on span { filter: none; opacity: 1; }
+
+/* people */
+#tabs button[hidden] { display: none; }
+.who { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 2px solid var(--line); border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 14px; box-shadow: var(--shadow); }
+.who span { color: var(--muted); font-size: 11px; }
+.people { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sheet-in .btn + .btn { margin-top: 8px; }
+
+/* the happy style: soft pink accents, same layout */
+body[data-tone="happy"] { --bg: #fff1f4; --brick: #e5679a; --brick-d: #a8406c; --soft: #fff7f9; --line: #f6dbe3; --shadow: 0 2px 0 #f3d3dc, 0 6px 18px rgba(168, 64, 108, .07); }
+body[data-tone="happy"] .wbrick.empty { border-color: #efc3d0; }

@@ -1,7 +1,11 @@
 'use strict';
-/* Brick — state, views and actions. All data lives in localStorage under "brick.v1" (object S).
-   normalize() fills in missing fields for older saves: never rename the key or break the data shape. */
-const KEY = 'brick.v1';
+/* Brick — state, views and actions.
+   Several people can use one phone. "brick.profiles" lists them; each person's data is one object S in its own key:
+   the first person keeps the original key "brick.v1" (so existing data is untouched), others use "brick.v1.<id>".
+   normalize() fills in missing fields for older saves: never rename the keys or break the data shape. */
+const REG_KEY = 'brick.profiles';
+let KEY = 'brick.v1', REG = null;
+const keyFor = id => id === 'p1' ? 'brick.v1' : 'brick.v1.' + id;
 const VERSION = 'v1';
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -17,7 +21,7 @@ let S, view = 'home', restEnd = 0, restDur = 0, tick = null, backRun = null, don
 
 /* ---------- storage ---------- */
 function defaults() {
-  return { v: 1, log: [], cur: null, set: { rest: 90, dbEnd: 4 }, plan: {}, back: [], cloud: { on: false, key: '', last: 0, err: '' }, fb: {} };
+  return { v: 1, log: [], cur: null, set: { rest: 90, dbEnd: 4 }, plan: {}, back: [], cloud: { on: false, key: '', last: 0, err: '' }, fb: {}, prof: { kind: 'tough', back: true } };
 }
 function normalize(x) {
   const d = defaults();
@@ -25,6 +29,8 @@ function normalize(x) {
   Object.keys(d).forEach(k => { if (x[k] === undefined) x[k] = d[k]; });
   x.set = Object.assign({}, d.set, x.set);
   x.cloud = Object.assign({}, d.cloud, x.cloud);
+  x.prof = Object.assign({}, d.prof, x.prof);
+  if (!PROGRAMS[x.prof.kind]) x.prof.kind = 'tough';
   if (!Array.isArray(x.log)) x.log = [];
   if (!Array.isArray(x.back)) x.back = [];
   x.log.forEach(s => { s.ex = (s.ex || []).filter(e => EX[e.k]); });
@@ -34,20 +40,43 @@ function normalize(x) {
 }
 function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
 function save() { saveLocal(); if (typeof queueCloud === 'function') queueCloud(); }
+function regLoad() {
+  try { REG = JSON.parse(localStorage.getItem(REG_KEY)); } catch (e) { }
+  if (!REG || !Array.isArray(REG.list) || !REG.list.length) REG = { active: 'p1', list: [{ id: 'p1', name: 'Me' }] };
+  if (!REG.list.some(p => p.id === REG.active)) REG.active = REG.list[0].id;
+}
+function regSave() { try { localStorage.setItem(REG_KEY, JSON.stringify(REG)); } catch (e) { } }
+const activeProfile = () => REG.list.find(p => p.id === REG.active);
 function load() {
+  regLoad(); KEY = keyFor(REG.active);
   let x = null;
   try { x = JSON.parse(localStorage.getItem(KEY)); } catch (e) { }
   S = normalize(x);
+  document.body.dataset.tone = S.prof.kind;
+}
+// Switch person: save the current one, forget the other person's cloud sign-in, load the new one.
+function switchTo(id) {
+  if (S) saveLocal();
+  REG.active = id; regSave();
+  if (typeof idTok !== 'undefined') { idTok = null; idExp = 0; lastCloud = null; clearTimeout(cloudT); }
+  restEnd = 0; backRun = null; doneInfo = null; homeQuote = '';
+  load(); view = S.cur ? 'workout' : 'home'; window.scrollTo(0, 0); render();
+  if (S.cloud.on) queueCloud();
 }
 
 /* ---------- helpers ---------- */
+const PROG = () => PROGRAMS[S.prof.kind];
+const QS = () => S.prof.kind === 'happy' ? QUOTES_HAPPY : QUOTES;
+// the mascot's mood in this person's style
+const moodFor = m => S.prof.kind !== 'happy' ? m : ({ flex: 'cheer', ready: 'happy' }[m] || m);
 const planFor = day => (S.plan[day] && S.plan[day].length ? S.plan[day] : DAYS[day].ex);
 function nextDay() {
+  const R = PROG().rotation;
   for (let i = S.log.length - 1; i >= 0; i--) {
-    const j = ROTATION.indexOf(S.log[i].day);
-    if (j >= 0) return ROTATION[(j + 1) % ROTATION.length];
+    const j = R.indexOf(S.log[i].day);
+    if (j >= 0) return R[(j + 1) % R.length];
   }
-  return ROTATION[0];
+  return R[0];
 }
 const lastSession = () => S.log[S.log.length - 1];
 function weekStart(d = new Date()) { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
@@ -67,6 +96,9 @@ function render() {
   const app = $('#app');
   const inWorkout = view === 'workout' && S.cur;
   document.body.dataset.view = view;
+  document.body.dataset.tone = S.prof.kind;
+  if (view === 'back' && !S.prof.back) view = 'home';
+  const bt = $('#tabs [data-v="back"]'); if (bt) bt.hidden = !S.prof.back;
   $('#tabs').hidden = inWorkout || view === 'done' || view === 'backrun';
   if (view === 'workout' && !S.cur) view = 'home';
   const html = { home: vHome, workout: vWorkout, wall: vWall, back: vBack, me: vMe, done: vDone, backrun: vBackRun }[view]();
@@ -78,9 +110,9 @@ function render() {
 function vHome() {
   const last = lastSession(), gap = last ? daysAgo(last.date) : 0;
   const mood = S.cur ? 'ready' : last && gap >= 7 ? 'sleepy' : 'ready';
-  if (!homeQuote) homeQuote = last && gap >= 7 ? pick(QUOTES.gap) : pick(QUOTES.home);
+  if (!homeQuote) homeQuote = last && gap >= 7 ? pick(QS().gap) : pick(QS().home);
   const nd = nextDay(), D = DAYS[nd];
-  const wk = thisWeek(), slots = Math.max(3, wk.length);
+  const wk = thisWeek(), slots = Math.max(PROG().goal, wk.length);
   let weekBricks = '';
   for (let i = 0; i < slots; i++) {
     const s = wk[i];
@@ -107,23 +139,24 @@ function vHome() {
       <div class="muted">${D.focus}</div>
       <ul class="plan-list">${rows}</ul>
       <button class="btn big" data-a="start" data-day="${nd}">Start ${D.name}</button>
-      <div class="other">Different day: ${Object.keys(DAYS).filter(d => d !== nd).map(d => `<button class="chip" data-a="start" data-day="${d}" style="--c:${DAYS[d].color}">${DAYS[d].name}${d === 'upper' ? ' ★' : ''}</button>`).join('')}</div>
+      <div class="other">Different day: ${PROG().days.filter(d => d !== nd).map(d => `<button class="chip" data-a="start" data-day="${d}" style="--c:${DAYS[d].color}">${DAYS[d].name}${PROG().bonus.includes(d) ? ' ★' : ''}</button>`).join('')}</div>
     </div>`;
   }
-  return `<header class="hero">
-      <div class="mascot">${brickSVG(mood, 132)}</div>
+  const multi = REG.list.length > 1;
+  return `${multi ? `<button class="who" data-a="whoSheet">👤 ${esc(activeProfile().name)} <span>▾</span></button>` : ''}<header class="hero">
+      <div class="mascot">${brickSVG(moodFor(mood), 132)}</div>
       <div class="bubble">${esc(homeQuote)}</div>
     </header>
     ${main}
     <div class="card">
-      <div class="row between"><b>This week</b><span class="muted small">${wk.length} brick${wk.length === 1 ? '' : 's'} · goal 3</span></div>
+      <div class="row between"><b>This week</b><span class="muted small">${wk.length} brick${wk.length === 1 ? '' : 's'} · goal ${PROG().goal}</span></div>
       <div class="week">${weekBricks}</div>
-      <div class="muted small">${last ? `Last workout: ${DAYS[last.day].name}, ${agoText(last.date)}.` : 'No bricks yet. The first one is the hardest.'} ${wk.length >= 3 ? 'Goal hit. Anything more is a bonus.' : ''}</div>
+      <div class="muted small">${last ? `Last workout: ${DAYS[last.day].name}, ${agoText(last.date)}.` : (S.prof.kind === 'happy' ? 'No bricks yet. Your first one is waiting!' : 'No bricks yet. The first one is the hardest.')} ${wk.length >= PROG().goal ? (S.prof.kind === 'happy' ? 'Goal reached! Yay!' : 'Goal hit. Anything more is a bonus.') : ''}</div>
     </div>
-    <button class="card back-card" data-a="tab" data-v="back">
+    ${S.prof.back ? `<button class="card back-card" data-a="tab" data-v="back">
       <div class="row between"><b>🌙 Evening back routine</b><span class="pill ${backDone ? 'ok' : ''}">${backDone ? 'Done today' : '6 min'}</span></div>
       <div class="muted small">Gentle, before sleep. ${S.back.length ? `${S.back.length} nights so far.` : 'Tap to see it.'}</div>
-    </button>`;
+    </button>` : ''}`;
 }
 
 /* ---------- workout ---------- */
@@ -134,7 +167,7 @@ function startWorkout(day) {
     ex: planFor(day).map(k => newExEntry(k)),
   };
   save(); view = 'workout'; window.scrollTo(0, 0); render();
-  toast(pick(QUOTES.start));
+  toast(pick(QS().start));
 }
 function newExEntry(k) {
   const sg = suggest(k);
@@ -206,7 +239,7 @@ function finishWorkout() {
   S.log.push(session); S.cur = null; restEnd = 0;
   save();
   const sets = ex.reduce((a, e) => a + e.sets.length, 0), vol = ex.reduce((a, e) => a + e.sets.reduce((b, x) => b + x.kg * x.reps, 0), 0);
-  doneInfo = { session, prs, sets, vol, quote: pick(QUOTES.done) };
+  doneInfo = { session, prs, sets, vol, quote: pick(QS().done) };
   homeQuote = '';
   view = 'done'; window.scrollTo(0, 0); render();
 }
@@ -214,7 +247,7 @@ function vDone() {
   const d = doneInfo; if (!d) { view = 'home'; return vHome(); }
   const n = S.log.length;
   return `<div class="done-wrap">
-    <div class="mascot bounce">${brickSVG('flex', 150)}</div>
+    <div class="mascot bounce">${brickSVG(moodFor('flex'), 150)}</div>
     <h1>Brick #${n}</h1>
     <p class="muted">${DAYS[d.session.day].name} · ${fmtDur(d.session.dur)} · ${d.sets} sets · ${Math.round(d.vol).toLocaleString('en-GB')} kg moved</p>
     ${d.prs.length ? `<div class="card prs"><b>🏆 New bests</b>${d.prs.map(p => `<div>${esc(p)}</div>`).join('')}</div>` : ''}
@@ -268,8 +301,8 @@ function vWall() {
       <div class="stat"><b>${streak}</b><span>weeks in a row</span></div>
       <div class="stat"><b>${best}</b><span>best week</span></div>
     </div>
-    <div class="card wall-card">${n ? wallSVG(S.log, { minRows: 4 }) : `<div class="center muted" style="padding:20px 0">${brickSVG('ready', 100)}<p>Finish your first workout to lay brick #1.</p></div>`}</div>
-    <div class="legend">${Object.keys(DAYS).map(d => `<span><i style="background:${DAYS[d].color}"></i>${DAYS[d].name}</span>`).join('')}</div>
+    <div class="card wall-card">${n ? wallSVG(S.log, { minRows: 4 }) : `<div class="center muted" style="padding:20px 0">${brickSVG(moodFor('ready'), 100)}<p>Finish your first workout to lay brick #1.</p></div>`}</div>
+    <div class="legend">${PROG().days.map(d => `<span><i style="background:${DAYS[d].color}"></i>${DAYS[d].name}</span>`).join('')}</div>
     ${n ? `<p class="muted small center">Tap a brick to see that workout.</p>` : ''}
     <h2 class="sub">Recent</h2>
     ${S.log.slice(-8).reverse().map(s => `<button class="card row between hist" data-a="openSession" data-id="${s.id}"><span><b style="color:${DAYS[s.day].color}">${DAYS[s.day].name}</b> · ${fmtDate(s.date)}</span><span class="muted small">${s.ex.reduce((a, e) => a + e.sets.length, 0)} sets · ${fmtDur(s.dur)}</span></button>`).join('') || '<p class="muted small">Nothing yet.</p>'}`;
@@ -323,7 +356,7 @@ function vBack() {
   const total = BACK.reduce((a, b) => a + b.secs, 0);
   const last14 = Array.from({ length: 14 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 13 + i); const k = dayStr(d); return `<i class="${S.back.includes(k) ? 'on' : ''}" title="${k}"></i>`; }).join('');
   return `<h1 class="title">Back routine</h1>
-    <p class="muted">${Math.round(total / 60)} minutes, in the evening before sleep. Slow and gentle. ${esc(pick(QUOTES.back))}</p>
+    <p class="muted">${Math.round(total / 60)} minutes, in the evening before sleep. Slow and gentle. ${esc(pick(QS().back))}</p>
     <div class="card warn-card small"><b>Stop rule:</b> if pain or tingling travels <b>down your leg</b>, stop that move. Pain that moves back toward the spine is usually fine. No hamstring stretching or toe touches. This is not medical advice; when you get the MRI result, ask what to add or remove.</div>
     <div class="card"><div class="row between"><b>Last 14 nights</b><span class="muted small">${S.back.includes(todayStr()) ? 'done tonight ✓' : ''}</span></div><div class="nights">${last14}</div></div>
     <div class="card">${BACK.map((b, i) => `<div class="bmove"><div class="bnum">${i + 1}</div><div class="grow"><b>${esc(b.name)}</b> <span class="muted small">${b.secs} s</span><div class="small muted">${esc(b.how)}</div>${posesHTML(b)}</div></div>`).join('')}</div>
@@ -368,8 +401,21 @@ function vMe() {
       <div class="code">${esc(fmtKey(c.key))}</div>
       <p class="muted small center">Your recovery code. Keep it somewhere outside this phone.</p>
       <div class="row gap"><button class="btn ghost sm" data-a="copyCode">Copy code</button><button class="btn ghost sm" data-a="cloudNow">Save now</button><button class="link muted" data-a="cloudOff">Turn off</button></div></div>`;
-  const swapped = Object.keys(S.plan).length;
+  const swapped = Object.keys(S.plan).length, P = PROG(), me = activeProfile();
+  const people = `<div class="card"><b>👥 People on this phone</b>
+      <p class="muted small">Each person has their own workouts, wall, settings and backup.</p>
+      <div class="people">${REG.list.map(p => `<button class="chip ${p.id === REG.active ? 'sel' : ''}" data-a="pickWho" data-id="${p.id}">${esc(p.name)}</button>`).join('')}
+      <button class="chip" data-a="addPerson">+ Add person</button></div></div>
+    <div class="card"><b>This person</b>
+      <label class="f"><span>Name</span><input class="inp" data-prof="name" maxlength="20" value="${esc(me.name)}"></label>
+      <label class="f"><span>Program and style</span>
+        <select class="inp" data-prof="kind">${Object.keys(PROGRAMS).map(k => `<option value="${k}" ${S.prof.kind === k ? 'selected' : ''}>${esc(PROGRAMS[k].label)}</option>`).join('')}</select></label>
+      <label class="f"><span>Evening back routine</span>
+        <select class="inp" data-prof="back"><option value="1" ${S.prof.back ? 'selected' : ''}>Show it</option><option value="0" ${S.prof.back ? '' : 'selected'}>Hide it</option></select></label>
+      ${REG.list.length > 1 ? `<button class="link muted" data-a="delPerson">Remove ${esc(me.name)} from this phone</button>` : ''}
+    </div>`;
   return `<h1 class="title">Me</h1>
+    ${people}
     <div class="card">
       <label class="f"><span>Rest timer after each set</span>
         <select class="inp" data-set="rest">${[60, 90, 120, 150, 180].map(v => `<option value="${v}" ${S.set.rest === v ? 'selected' : ''}>${fmtDur(v)}</option>`).join('')}</select></label>
@@ -383,13 +429,43 @@ function vMe() {
       <div class="row gap"><button class="btn ghost sm" data-a="export">Download backup</button><button class="btn ghost sm" data-a="import">Load backup</button></div>
       <input type="file" id="imp" accept="application/json,.json" hidden></div>
     <div class="card"><b>Plan</b>
-      <p class="muted small">${swapped ? 'You swapped some exercises for good. ' : ''}Rotation: Push → Pull → Legs. Upper is a bonus day that does not move the rotation.</p>
+      <p class="muted small">${swapped ? 'You swapped some exercises for good. ' : ''}Rotation: ${P.rotation.map(d => DAYS[d].name).join(' → ')}.${P.bonus.length ? ` ${P.bonus.map(d => DAYS[d].name).join(', ')} is a bonus day that does not move the rotation.` : ''} Goal: ${P.goal} a week.</p>
       ${swapped ? '<button class="btn ghost sm" data-a="resetPlan">Reset plan to default</button>' : ''}</div>
     <p class="muted small center">Brick ${VERSION} · ${S.log.length} workouts saved on this phone</p>`;
 }
 
+function personForm() {
+  openSheet(`<div class="sh-head"><b>Add a person</b><button class="icon" data-a="closeSheet">✕</button></div>
+    <label class="f"><span>Name</span><input class="inp" id="np-name" maxlength="20" placeholder="Name"></label>
+    <label class="f"><span>Program and style</span>
+      <select class="inp" id="np-kind">${Object.keys(PROGRAMS).map(k => `<option value="${k}" ${k === 'happy' ? 'selected' : ''}>${esc(PROGRAMS[k].label)}</option>`).join('')}</select></label>
+    <p class="muted small">You can change the program, swap exercises and turn the back routine on or off later in Me.</p>
+    <button class="btn" data-a="addPersonGo">Add and switch to them</button>`);
+}
+function whoSheet() {
+  openSheet(`<div class="sh-head"><b>Who is training?</b><button class="icon" data-a="closeSheet">✕</button></div>
+    ${REG.list.map(p => `<button class="btn ${p.id === REG.active ? '' : 'ghost'}" data-a="pickWho" data-id="${p.id}">${esc(p.name)}</button>`).join('')}
+    <button class="link center-block" data-a="addPerson">+ Add person</button>`);
+}
+
 /* ---------- actions ---------- */
 const A = {
+  whoSheet: () => whoSheet(),
+  pickWho: el => { closeSheet(); if (el.dataset.id !== REG.active) { switchTo(el.dataset.id); toast(`Hi ${activeProfile().name}!`); } },
+  addPerson: () => personForm(),
+  addPersonGo: () => {
+    const name = ($('#np-name').value || '').trim() || 'Person ' + (REG.list.length + 1), kind = $('#np-kind').value;
+    const id = 'p' + Date.now().toString(36);
+    const fresh = normalize({ prof: { kind, back: kind !== 'happy' } });
+    try { localStorage.setItem(keyFor(id), JSON.stringify(fresh)); } catch (e) { }
+    REG.list.push({ id, name }); regSave(); closeSheet(); switchTo(id); toast(`Hi ${name}!`);
+  },
+  delPerson: () => {
+    const me = activeProfile();
+    if (!confirm(`Remove ${me.name} and all their workouts from this phone? Their cloud backup (if on) stays online. This cannot be undone on this phone.`)) return;
+    try { localStorage.removeItem(keyFor(me.id)); } catch (e) { }
+    REG.list = REG.list.filter(p => p.id !== me.id); S = null; switchTo(REG.list[0].id);
+  },
   tab: el => { view = el.dataset.v; homeQuote = view === 'home' ? '' : homeQuote; window.scrollTo(0, 0); render(); },
   start: el => {
     const day = el.dataset.day;
@@ -416,7 +492,7 @@ const A = {
     x.done = true; save();
     const all = e.sets.every(s => s.done);
     if (!all) startRest(); else restEnd = 0;
-    if (Math.random() < 0.35) toast(pick(QUOTES.set));
+    if (Math.random() < 0.35) toast(pick(QS().set));
     rerenderEx(i, true);
   },
   addSet: el => { const e = S.cur.ex[+el.dataset.i], l = e.sets[e.sets.length - 1] || { kg: '', t: EX[e.k].min }; e.sets.push({ kg: l.kg, reps: '', t: l.t, tk: l.kg, done: false }); save(); rerenderEx(+el.dataset.i); },
@@ -475,7 +551,7 @@ const A = {
   },
   export: () => {
     const blob = new Blob([JSON.stringify(Object.assign({}, S, { fb: {} }), null, 1)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `brick-backup-${todayStr()}.json`; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `brick-backup-${activeProfile().name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${todayStr()}.json`; a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
   import: () => $('#imp').click(),
@@ -518,6 +594,9 @@ document.addEventListener('change', ev => {
   const el = ev.target;
   if (el.dataset.in && S.cur) { save(); return; }
   if (el.dataset.set) { S.set[el.dataset.set] = +el.value; save(); render(); toast('Saved.'); return; }
+  if (el.dataset.prof === 'name') { activeProfile().name = el.value.trim().slice(0, 20) || activeProfile().name; regSave(); render(); toast('Saved.'); return; }
+  if (el.dataset.prof === 'kind') { S.prof.kind = el.value; if (S.cur && !PROG().days.includes(S.cur.day)) { /* keep the running workout */ } homeQuote = ''; save(); render(); toast('Program changed. Your wall and history stay.'); return; }
+  if (el.dataset.prof === 'back') { S.prof.back = el.value === '1'; save(); render(); toast('Saved.'); return; }
   if (el.id === 'imp' && el.files[0]) {
     const r = new FileReader();
     r.onload = () => {
