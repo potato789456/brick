@@ -75,7 +75,7 @@ const DAYS = {
   upper: { name: 'Upper', focus: 'Bonus day · whole upper body', color: '#d49a2a', ex: ['dbpress', 'bentrow', 'lateral', 'dbcurl', 'revcurl', 'obliques'] },
 };
 // Her days: 2 a week, glute focus, knee-friendly (no squats or lunges)
-DAYS.ga = { name: 'Glutes & Push', focus: 'Glutes · Chest · Arms', color: '#e5679a', ex: ['hipthrust', 'sidelying', 'bench', 'cgbench', 'ezcurl'] };
+DAYS.ga = { name: 'Glutes & Push', focus: 'Glutes · Chest · Arms', color: '#2a9d8f', ex: ['hipthrust', 'sidelying', 'bench', 'cgbench', 'ezcurl'] };
 DAYS.gb = { name: 'Glutes & Pull', focus: 'Glutes · Hamstrings · Back', color: '#8f6ad6', ex: ['rdl', 'bentrow', 'glutebridge', 'sidelying'] };
 
 /* Programs per person. kind 'tough' = push/pull/legs + Hormozi-style lines; 'happy' = 2-day glute program + cheerful lines.

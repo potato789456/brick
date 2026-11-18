@@ -12,15 +12,15 @@ function brickSVG(mood = 'ready', size = 120) {
   if (mood === 'happy' || mood === 'cheer') {
     // the cheerful brick: round sparkly eyes, big smile, rosy cheeks
     eyes = `<ellipse cx="66" cy="70" rx="6.5" ry="7.5" fill="#2b1a14"/><ellipse cx="98" cy="70" rx="6.5" ry="7.5" fill="#2b1a14"/><circle cx="68.5" cy="67" r="2.4" fill="#fff"/><circle cx="100.5" cy="67" r="2.4" fill="#fff"/>`;
-    brows = `<ellipse cx="52" cy="84" rx="8" ry="5" fill="#ff9aa8" opacity=".75"/><ellipse cx="112" cy="84" rx="8" ry="5" fill="#ff9aa8" opacity=".75"/>`;
+    brows = `<ellipse cx="52" cy="84" rx="8" ry="5" fill="#f2a65a" opacity=".75"/><ellipse cx="112" cy="84" rx="8" ry="5" fill="#f2a65a" opacity=".75"/>`;
     mouth = `<path d="M70 84q10 12 20 0" stroke="#2b1a14" stroke-width="3.5" fill="#7a2b1b" stroke-linecap="round"/>`;
     if (mood === 'cheer') {
       arms = `<path d="M22 80q-16-2-16-22M138 80q16-2 16-22" stroke="#7a2b1b" stroke-width="6" stroke-linecap="round" fill="none"/>`;
-      extra = `<path d="M30 30c-4-6 4-10 6-4 2-6 10-2 6 4l-6 7z" fill="#ff6f91"/><path d="M128 22c-4-6 4-10 6-4 2-6 10-2 6 4l-6 7z" fill="#ff6f91"/><path d="M80 6l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="#e8a33d"/>`;
+      extra = `<path d="M30 30c-4-6 4-10 6-4 2-6 10-2 6 4l-6 7z" fill="#e8a33d"/><path d="M128 22c-4-6 4-10 6-4 2-6 10-2 6 4l-6 7z" fill="#e8a33d"/><path d="M80 6l2 6 6 2-6 2-2 6-2-6-6-2 6-2z" fill="#e8a33d"/>`;
     } else {
       // waving
       arms = `<path d="M22 86q-12 6-10 18M138 82q14-6 16-24" stroke="#7a2b1b" stroke-width="5" stroke-linecap="round" fill="none"/>`;
-      extra = `<path d="M150 36c-3-5 3-8 5-3 2-5 8-2 5 3l-5 6z" fill="#ff6f91"/>`;
+      extra = `<path d="M150 36c-3-5 3-8 5-3 2-5 8-2 5 3l-5 6z" fill="#e8a33d"/>`;
     }
   } else if (mood === 'sleepy' || mood === 'calm') {
     eyes = `<path d="M60 70q6 5 12 0M92 70q6 5 12 0" stroke="#2b1a14" stroke-width="3.5" fill="none" stroke-linecap="round"/>`;

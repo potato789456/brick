@@ -16,7 +16,7 @@ Plain HTML/CSS/JS, no build step, no frameworks. Scripts load in this order:
 
 All data is in localStorage under `brick.v1` (object `S`). `normalize()` fills in missing fields. Never rename the key or break the shape of existing data.
 
-`sw.js` is the offline cache. EVERY publish: raise the cache name by one (now `brick-v2`) and add any new file to SHELL.
+`sw.js` is the offline cache. EVERY publish: raise the cache name by one (now `brick-v6`) and add any new file to SHELL.
 
 ## Rules the owner chose (keep them)
 - Rotation, not calendar weeks: Push → Pull → Legs. Upper is a bonus day that does not move the rotation. No guilt for missed days.
@@ -28,5 +28,5 @@ All data is in localStorage under `brick.v1` (object `S`). `normalize()` fills i
 
 ## People (added 2026-11-18)
 - Several people can share one phone. `brick.profiles` = { active, list:[{id,name}] }. The first person (`p1`) keeps the original key `brick.v1`; others use `brick.v1.<id>`. Switch in Me or the 👤 chip on Home.
-- Each person's S has `prof = { kind, back }`. `kind` picks the program in `PROGRAMS` (data.js): `tough` = Push/Pull/Legs + Upper bonus, goal 3, Hormozi-style lines; `happy` = his girlfriend's 2-day glute program (Glutes & Push / Glutes & Pull), goal 2, cheerful lines (`QUOTES_HAPPY`), smiling mascot, pink accents (`body[data-tone=happy]`). `back` shows or hides the evening back routine.
+- Each person's S has `prof = { kind, back }`. `kind` picks the program in `PROGRAMS` (data.js): `tough` = Push/Pull/Legs + Upper bonus, goal 3, Hormozi-style lines; `happy` = his girlfriend's 2-day glute program (Glutes & Push / Glutes & Pull), goal 2, cheerful lines (`QUOTES_HAPPY`), smiling mascot. `back` shows or hides the evening back routine.
 - Her constraints: knee problem (no squats, no lunges, leg extension only if the knee is fine), glute focus, prefers bench over overhead press, likes EZ curls, close-grip bench, bent-over row or wide / V-bar pulldowns, RDL, side-lying leg raises.
